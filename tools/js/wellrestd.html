@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!--[if IE]><![endif]-->
+
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>wellrestd</title>
+  <meta name="description" content="Implementation of the wellrestd tool for restd in JavaScript">
+  <meta name="author" content="Ryan Westphal">
+  <link rel="shortcut icon" href="/favicon.ico">
+</head>
+<body>
+  <div id="container">
+    <div id="main">
+      <h1>wellrestd</h1>
+      <p>This is a JavaScript implementation of the wellrestd tool defined in <a href="http://restd.net/tools.html">http://restd.net/tools.html</a>. I cannot recommend using this version of the tool on very large files as it may crash or lock your browser.</p>
+      <p>As input, paste the content of an entire restd file in this first box.</p>
+      <textarea id=restdInput style="width: 80%;" rows="12">{"data":[{"foo":1234}]}</textarea>
+      <p>Then, click one of these buttons. They correspond to the wellrestd arguments.</p>
+      <ul>
+        <li id=report><button type=button>report</button></li>
+        <li id=make><button type=button>make</button></li>
+        <li id=blocksizeSet>
+        <button type=button>-blocksize</button>
+        <label>set blockSize to <input type=text value="1024" /></label> bytes
+        </li>
+        <li id=blocksizeTucked><button type=button>-blocksize tucked</button></li>
+        <li id=blocksizeFluffed>
+        <button type=button>-blocksize fluffed</button>
+        <label>tuck blockSize &amp; then fluff by <input type=text value="1024" /></label> bytes
+        </li>
+        <li id=fluff>
+        <button type=button>-fluff</button>
+        <label>blockSize by <input type=text value="1024" /></label> bytes
+        </li>
+        <li id=vacuum><button type=button>-vacuum</button></li>
+      </ul>
+      <p>View your report, error message or processed restd file below.</p>
+      <textarea id=restdOutput style="width: 80%;" rows="12"></textarea>
+      <button id=cmdCopy type=button>Copy to input</button>
+    </div>
+  </div> <!-- end of #container -->
+
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+  <script src="wellrestd.js?v=1"></script>
+</body>
+</html>
+
