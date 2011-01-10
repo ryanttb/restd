@@ -8,6 +8,68 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 
+public interface IRestdInterceptor
+{
+  /// <summary>
+  /// Allow/deny a client to query a resource
+  /// </summary>
+  /// <param name="restdFile">Restd resource file to query</param>
+  /// <param name="query">Query, empty if not supplied</param>
+  /// <returns>true to allow the client to query</returns>
+  /// <remarks>
+  /// You may modify the query. The modified query will be used instead.
+  /// </remarks>
+  bool CanGet(string restdFile, ref string query);
+
+  /// <summary>
+  /// While a query is taking place, allow/deny a client to a specific item
+  /// </summary>
+  /// <param name="restdFile">Restd resource file to query</param>
+  /// <param name="key">Restd key of the item being considered</param>
+  /// <param name="content">Content of the item being considered</param>
+  /// <returns>true to allow the client to retrieve this item</returns>
+  /// <remarks>
+  /// You may modify the content. The modified JSON will be sent instead.
+  /// Do not remove the _restd property.
+  /// </remarks>
+  bool CanGetItem(string restdFile, int key, ref string content);
+
+  /// <summary>
+  /// Allow/deny a client to insert a specific item
+  /// </summary>
+  /// <param name="restdFile">Restd resource file to insert into</param>
+  /// <param name="content">Content of the item being inserted</param>
+  /// <returns>true to allow the client to insert this item</returns>
+  /// <remarks>
+  /// You may modify the content. The modified JSON will be inserted instead.
+  /// </remarks>
+  bool CanPost(string restdFile, ref string content);
+
+  /// <summary>
+  /// Allow/deny a client to update a specific item
+  /// </summary>
+  /// <param name="restdFile">Restd resource file to update into</param>
+  /// <param name="key">Restd key of the item being updated</param>
+  /// <param name="content">Content of the item being updated</param>
+  /// <returns>true to allow the client to update this item</returns>
+  /// <remarks>
+  /// You may modify the content. The modified JSON will be updated instead.
+  /// </remarks>
+  bool CanPut(string restdFile, int key, ref string content);
+
+  /// <summary>
+  /// Allow/deny a client to delete a specific item
+  /// </summary>
+  /// <param name="restdFile">Restd resource file to delete from</param>
+  /// <param name="key">Restd key of the item being deleted</param>
+  /// <param name="content">Content of the item being deleted</param>
+  /// <returns>true to allow the client to delete this item</returns>
+  /// <remarks>
+  /// You cannot modify the content of the item being deleted.
+  /// </remarks>
+  bool CanDelete(string restdFile, int key, string content);
+}
+
 /// <summary>
 /// Reads and writes JSON data to a single restd resource file
 /// </summary>
@@ -28,14 +90,30 @@ public class Restd
   private int _blockSize = -1;
   private HttpStatusCode _constructorStatus = HttpStatusCode.OK;
 
+  public IRestdInterceptor Interceptor { get; set; }
+
+  public Restd(string restdFile)
+  {
+    Initialize(restdFile, null, null);
+  }
+
   public Restd(string restdFile, string serviceUri)
   {
-    HttpStatusCode status = HttpStatusCode.OK;
-    _serviceUri = serviceUri;
+    Initialize(restdFile, serviceUri, null);
+  }
 
-    if (serviceUri == null)
+  public Restd(string restdFile, string serviceUri, IRestdInterceptor interceptor)
+  {
+    Initialize(restdFile, serviceUri, interceptor);
+  }
+
+  private void Initialize(string restdFile, string serviceUri, IRestdInterceptor interceptor)
+  {
+    HttpStatusCode status = HttpStatusCode.OK;
+
+    if (!String.IsNullOrEmpty(serviceUri))
     {
-      serviceUri = "";
+      _serviceUri = serviceUri;
     }
 
     if (!File.Exists(restdFile))
@@ -51,7 +129,40 @@ public class Restd
       status = ReadHeader();
     }
 
+    Interceptor = interceptor;
+
     _constructorStatus = status;
+  }
+
+  /// <summary>
+  /// Return an array of entires as a string
+  /// </summary>
+  public string Query(string query)
+  {
+    StringBuilder entryBuilder = new StringBuilder();
+    StringWriter entryWriter = null;
+
+    try
+    {
+      entryWriter = new StringWriter(entryBuilder);
+
+      if (Query(query, entryWriter) == HttpStatusCode.OK)
+      {
+        return entryBuilder.ToString();
+      }
+      else
+      {
+        return "[]";
+      }
+    }
+    catch (Exception)
+    {
+      return "[]";
+    }
+    finally
+    {
+      entryWriter.Close();
+    }
   }
 
   /// <summary>
@@ -65,8 +176,17 @@ public class Restd
 
     try
     {
-      string[] filters;
-      status = ParseQuery(query, out filters);
+      query = query ?? "";
+      if (Interceptor != null && !Interceptor.CanGet(this._restdFile, ref query))
+      {
+        status = HttpStatusCode.Unauthorized;
+      }
+
+      string[] filters = null;
+      if (status == HttpStatusCode.OK)
+      {
+        status = ParseQuery(query, out filters);
+      }
 
       if (status == HttpStatusCode.OK)
       {
@@ -95,43 +215,61 @@ public class Restd
         {
           if (entryBuffer[0] == '{')
           {
-            if (filters == null)
+            string entryString = null;
+            bool canGetItem = true;
+
+            if (Interceptor != null)
             {
-              if (total > 0)
+              if (entryString == null)
               {
-                output.Write(',');
+                entryString = GetEntryString(index, entryBuffer);
               }
 
-              output.Write(EntryPrefixFormat, _resourcePath, index);
-
-              WriteEntryProperties(entryBuffer, output);
-
-              output.Write('}');
-
-              total++;
+              canGetItem = Interceptor.CanGetItem(_restdFile, index, ref entryString);
             }
-            else
+
+            if (canGetItem)
             {
-              StringBuilder entryBuilder = new StringBuilder();
-              StringWriter entryWriter = new StringWriter(entryBuilder);
-
-              entryWriter.Write(EntryPrefixFormat, _resourcePath, index);
-              WriteEntryProperties(entryBuffer, entryWriter);
-              entryWriter.Write('}');
-
-              entryWriter.Close();
-              string entry = entryBuilder.ToString();
-
-              if (IsInFilter(entry, filters))
+              if (filters == null)
               {
                 if (total > 0)
                 {
-                  output.Write(",");
+                  output.Write(',');
                 }
 
-                output.Write(entry);
+                if (entryString != null)
+                {
+                  output.Write(entryString);
+                }
+                else
+                {
+                  output.Write(EntryPrefixFormat, _resourcePath, index);
+
+                  WriteEntryProperties(entryBuffer, output);
+
+                  output.Write('}');
+                }
 
                 total++;
+              }
+              else
+              {
+                if (entryString == null)
+                {
+                  entryString = GetEntryString(index, entryBuffer);
+                }
+
+                if (IsInFilter(entryString, filters))
+                {
+                  if (total > 0)
+                  {
+                    output.Write(",");
+                  }
+
+                  output.Write(entryString);
+
+                  total++;
+                }
               }
             }
           }
@@ -244,8 +382,15 @@ public class Restd
       }
       else if (entityData[0] != '{' || entityData[entityData.Length - 1] != '}')
       {
-        // Really, any valid JSON should be allowed
         status = HttpStatusCode.BadRequest;
+      }
+
+      if (status == HttpStatusCode.OK)
+      {
+        if (Interceptor != null && !Interceptor.CanPost(_restdFile, ref entityData))
+        {
+          status = HttpStatusCode.Unauthorized;
+        }
       }
 
       if (status == HttpStatusCode.OK)
@@ -308,6 +453,14 @@ public class Restd
 
       if (status == HttpStatusCode.OK)
       {
+        if (Interceptor != null && !Interceptor.CanPut(_restdFile, key, ref entityData))
+        {
+          status = HttpStatusCode.Unauthorized;
+        }
+      }
+
+      if (status == HttpStatusCode.OK)
+      {
         lock (SyncRoot)
         {
           FileInfo resourceInfo = new FileInfo(_restdFile);
@@ -362,24 +515,43 @@ public class Restd
 
     try
     {
-      lock (SyncRoot)
+      if (status == HttpStatusCode.OK)
       {
-        FileInfo resourceInfo = new FileInfo(_restdFile);
-        long entityCount = (resourceInfo.Length - 64) / _blockSize;
-
-        if (key < entityCount)
+        if (Interceptor != null)
         {
-          long insertOffset = 64 + _byteOrderMarkSize + key * _blockSize;
+          StringBuilder entryBuilder = new StringBuilder();
+          StringWriter entryWriter = new StringWriter(entryBuilder);
 
-          resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+          status = GetItem(key, entryWriter);
 
-          long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
+          if (status == HttpStatusCode.OK && !Interceptor.CanDelete(_restdFile, key, entryBuilder.ToString()))
+          {
+            status = HttpStatusCode.Unauthorized;
+          }
+        }
+      }
 
-          StreamWriter resourceWriter = new StreamWriter(resourceStream);
-          resourceWriter.Write(new string(' ', _blockSize));
-          resourceWriter.Flush();
-          resourceStream.Close();
-          resourceStream = null;
+      if (status == HttpStatusCode.OK)
+      {
+        lock (SyncRoot)
+        {
+          FileInfo resourceInfo = new FileInfo(_restdFile);
+          long entityCount = (resourceInfo.Length - 64) / _blockSize;
+
+          if (key < entityCount)
+          {
+            long insertOffset = 64 + _byteOrderMarkSize + key * _blockSize;
+
+            resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+
+            long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
+
+            StreamWriter resourceWriter = new StreamWriter(resourceStream);
+            resourceWriter.Write(new string(' ', _blockSize));
+            resourceWriter.Flush();
+            resourceStream.Close();
+            resourceStream = null;
+          }
         }
       }
     }
@@ -519,6 +691,19 @@ public class Restd
         output.Write(entryBuffer[i]);
       }
     }
+  }
+
+  private string GetEntryString(int index, char[] entryBuffer)
+  {
+    StringBuilder entryBuilder = new StringBuilder();
+    StringWriter entryWriter = new StringWriter(entryBuilder);
+
+    entryWriter.Write(EntryPrefixFormat, _resourcePath, index);
+    WriteEntryProperties(entryBuffer, entryWriter);
+    entryWriter.Write('}');
+
+    entryWriter.Close();
+    return entryBuilder.ToString();
   }
 }
 

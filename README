@@ -1,0 +1,18 @@
+== Readme ==
+
+== Changelog ==
+
+=== 0.2.0 (2011-01-10) === 
+* svc - asp - Allow operation interceptors for security
+* svc - asp - Add a version of Query to Restd that returns a string for use outside of service
+* svc - asp - [BUG] Content-type check does not handle additional properties in header
+
+=== 0.1.0 === 
+* svc - asp - Initial stab at ASP.NET restd service
+* tools - js - wellrestd - Initial stab at JavaScript wellrestd tool
+
+=== Todo === 
+* svc - asp - Actually use headerSize
+* svc - asp - Allow null security functions (use delegates) so that we don't waste time if they want, e.g., CanGet but not CanGetItem and especially not CanDelete which doesn't need to build the entitySting if there's no interceptor
+
+

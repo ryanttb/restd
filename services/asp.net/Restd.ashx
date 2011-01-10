@@ -1,4 +1,4 @@
-<%@ WebHandler Language="C#" Class="PortalData" %>
+<%@ WebHandler Language="C#" Class="RestdSvc" %>
 
 using System;
 using System.IO;
@@ -9,9 +9,34 @@ using System.Web;
 
 using DTrace = System.Diagnostics.Trace;
 
-public class PortalData : IHttpHandler
+public class RestdSvc : IHttpHandler, IRestdInterceptor
 {
   private static object SyncRoot = new object();
+
+  public virtual bool CanGet(string restdFile, ref string query)
+  {
+    return true;
+  }
+
+  public virtual bool CanGetItem(string restdFile, int key, ref string content)
+  {
+    return true;
+  }
+
+  public virtual bool CanPost(string restdFile, ref string content)
+  {
+    return true;
+  }
+
+  public virtual bool CanPut(string restdFile, int key, ref string content)
+  {
+    return true;
+  }
+
+  public virtual bool CanDelete(string restdFile, int key, string content)
+  {
+    return true;
+  }
 
   public void ProcessRequest(HttpContext context)
   {
@@ -24,9 +49,11 @@ public class PortalData : IHttpHandler
     }
 #endif
 
+    HttpStatusCode status = HttpStatusCode.OK;
+
     try
     {
-      //DTrace.WriteLine("PortalData: " + queryString);
+      DTrace.WriteLine("RestdSvc: " + context.Request.QueryString.ToString());
 
       string[] resources = GetResources(context);
 
@@ -35,52 +62,155 @@ public class PortalData : IHttpHandler
 
       if (!TryParseResourceAndKey(context.Request.QueryString["/"], out resource, out key))
       {
-        context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        status = HttpStatusCode.BadRequest;
       }
       else if (!(resource == "/" || resources.Count(r => r == resource) > 0))
       {
-        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+        status = HttpStatusCode.NotFound;
       }
       else
       {
-        Restd providerData = new Restd(context.Server.MapPath("~/App_Data" + resource + ".restd"), context.Request.Url.AbsoluteUri.Replace(context.Request.Url.Query, "?/="));
+        string contentType = "";
+        string content = "";
+        
+        Restd restd = new Restd(context.Server.MapPath("~/App_Data" + resource + ".restd"), context.Request.Url.AbsoluteUri.Replace(context.Request.Url.Query, "?/="), this);
         switch (context.Request.HttpMethod)
         {
           case "GET":
             if (key != null)
             {
-              context.Response.StatusCode = (int)providerData.GetItem(key.Value, context.Response.Output);
+              status = restd.GetItem(key.Value, context.Response.Output);
             }
             else
             {
-              context.Response.StatusCode = (int)providerData.Query(context.Request.QueryString["q"], context.Response.Output);
+              status = restd.Query(context.Request.QueryString["q"], context.Response.Output);
             }
             break;
 
           case "POST":
             if (resource == "/" || key.HasValue)
             {
-              context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+              status = HttpStatusCode.BadRequest;
+            }
+
+            if (status == HttpStatusCode.OK)
+            {
+              string[] contentTypeParts = (context.Request.ContentType != null ? context.Request.ContentType.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries) : null);
+              if (contentTypeParts == null || contentTypeParts.Length == 0)
+              {
+                status = HttpStatusCode.BadRequest;
+              }
+              else
+              {
+                contentType = contentTypeParts[0];
+              }
+            }
+
+            if (status == HttpStatusCode.OK)
+            {
+              switch (contentType)
+              {
+                case "application/json":
+                  byte[] contentBytes = new byte[context.Request.ContentLength];
+                  context.Request.InputStream.Read(contentBytes, 0, context.Request.ContentLength);
+                  content = System.Text.UTF8Encoding.UTF8.GetString(contentBytes);
+                  break;
+
+                default:
+                  if (context.Request.Form.Count > 0)
+                  {
+                    content += "{";
+
+                    for (int i = 0; i < context.Request.Form.Count; i++)
+                    {
+                      if (i > 0)
+                      {
+                        content += ",";
+                      }
+
+                      content += String.Format(@"""{0}"":""{1}""", context.Request.Form.Keys[i], context.Request.Form[i]);
+                    }
+
+                    content += "}";
+                  }
+                  break;
+              }
+            }
+
+            if (String.IsNullOrEmpty(content))
+            {
+              status = HttpStatusCode.BadRequest;
             }
             else
             {
-              context.Response.StatusCode = (int)providerData.PostItem(context.Request.Form[0], out key);
-              if (context.Response.StatusCode == (int)HttpStatusCode.OK)
-              {
-                context.Response.Write(key);
-              }
+              status = restd.PostItem(content, out key);
+            }
+
+            if (status == HttpStatusCode.OK)
+            {
+              context.Response.Write(key);
             }
             break;
 
           case "PUT":
             if (resource == "/" || !key.HasValue)
             {
-              context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+              status = HttpStatusCode.BadRequest;
             }
-            else
+
+            if (status == HttpStatusCode.OK)
             {
-              context.Response.StatusCode = (int)providerData.PutItem(key.Value, context.Request.Form[0]);
-              if (context.Response.StatusCode == (int)HttpStatusCode.OK)
+              string[] contentTypeParts = (context.Request.ContentType != null ? context.Request.ContentType.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries) : null);
+              if (contentTypeParts == null || contentTypeParts.Length == 0)
+              {
+                status = HttpStatusCode.BadRequest;
+              }
+              else
+              {
+                contentType = contentTypeParts[0];
+              }
+            }
+
+            if (status == HttpStatusCode.OK)
+            {
+              switch (contentType)
+              {
+                case "application/json":
+                  byte[] contentBytes = new byte[context.Request.ContentLength];
+                  context.Request.InputStream.Read(contentBytes, 0, context.Request.ContentLength);
+                  content = System.Text.UTF8Encoding.UTF8.GetString(contentBytes);
+                  break;
+
+                default:
+                  if (context.Request.Form.Count > 0)
+                  {
+                    content += "{";
+
+                    for (int i = 0; i < context.Request.Form.Count; i++)
+                    {
+                      if (i > 0)
+                      {
+                        content += ",";
+                      }
+
+                      content += String.Format(@"""{0}"":""{1}""", context.Request.Form.Keys[i], context.Request.Form[i]);
+                    }
+
+                    content += "}";
+                  }
+                  break;
+              }
+
+              if (String.IsNullOrEmpty(content))
+              {
+                status = HttpStatusCode.BadRequest;
+              }
+              else
+              {
+                status = restd.PutItem(key.Value, content);
+              }
+
+              if (status == HttpStatusCode.OK)
               {
                 context.Response.Write(key);
               }
@@ -90,12 +220,12 @@ public class PortalData : IHttpHandler
           case "DELETE":
             if (resource == "/" || !key.HasValue)
             {
-              context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+              status = HttpStatusCode.BadRequest;
             }
             else
             {
-              context.Response.StatusCode = (int)providerData.DeleteItem(key.Value);
-              if (context.Response.StatusCode == (int)HttpStatusCode.OK)
+              status = restd.DeleteItem(key.Value);
+              if (status == HttpStatusCode.OK)
               {
                 context.Response.Write(key);
               }
@@ -103,7 +233,7 @@ public class PortalData : IHttpHandler
             break;
 
           default:
-            context.Response.StatusCode = (int)HttpStatusCode.NotImplemented;
+            status = HttpStatusCode.NotImplemented;
             break;
         }
       }
@@ -111,7 +241,11 @@ public class PortalData : IHttpHandler
     catch (Exception ex)
     {
       DTrace.WriteLine(ex.Message);
-      context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+      status = HttpStatusCode.InternalServerError;
+    }
+    finally
+    {
+      context.Response.StatusCode = (int)status;
     }
   }
 
@@ -151,7 +285,7 @@ public class PortalData : IHttpHandler
 
     key = null;
     if (ok)
-    {      
+    {
       int keyValue;
       if (resourceParts.Length > 1 && Int32.TryParse(resourceParts[1], out keyValue))
       {
@@ -170,4 +304,5 @@ public class PortalData : IHttpHandler
     }
   }
 }
+
 
