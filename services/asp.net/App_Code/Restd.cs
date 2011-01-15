@@ -117,6 +117,7 @@ public class Restd
   private string _serviceUri = "";
   private string _resourceName = "";
   private int _byteOrderMarkSize = 3;
+  private int _headerSize = 64;
   private int _blockSize = -1;
 
   private HttpStatusCode _constructorStatus = HttpStatusCode.OK;
@@ -227,7 +228,7 @@ public class Restd
 
       if (status == HttpStatusCode.OK)
       {
-        resourceStream.Seek(64 + _byteOrderMarkSize, SeekOrigin.Begin);
+        resourceStream.Seek(_headerSize + _byteOrderMarkSize, SeekOrigin.Begin);
         StreamReader resourceReader = new StreamReader(resourceStream);
 
         entryBuffer = new char[_blockSize];
@@ -345,7 +346,7 @@ public class Restd
       if (status == HttpStatusCode.OK)
       {
         FileInfo resourceInfo = new FileInfo(_restdFile);
-        long entityCount = (resourceInfo.Length - 64) / _blockSize;
+        long entityCount = (resourceInfo.Length - _headerSize) / _blockSize;
         if (key >= entityCount)
         {
           status = HttpStatusCode.NotFound;
@@ -357,7 +358,7 @@ public class Restd
       if (status == HttpStatusCode.OK)
       {
         entryBuffer = new char[_blockSize];
-        resourceStream.Seek(64 + _byteOrderMarkSize + key * _blockSize, SeekOrigin.Begin);
+        resourceStream.Seek(_headerSize + _byteOrderMarkSize + key * _blockSize, SeekOrigin.Begin);
 
         StreamReader resourceReader = new StreamReader(resourceStream);
         int bytesRead = resourceReader.Read(entryBuffer, 0, _blockSize);
@@ -423,8 +424,8 @@ public class Restd
         lock (SyncRoot)
         {
           FileInfo resourceInfo = new FileInfo(_restdFile);
-          long entityCount = (resourceInfo.Length - 64) / _blockSize;
-          long insertOffset = 64 + _byteOrderMarkSize + entityCount * _blockSize;
+          long entityCount = (resourceInfo.Length - _headerSize) / _blockSize;
+          long insertOffset = _headerSize + _byteOrderMarkSize + entityCount * _blockSize;
 
           resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
           long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
@@ -489,7 +490,7 @@ public class Restd
         lock (SyncRoot)
         {
           FileInfo resourceInfo = new FileInfo(_restdFile);
-          long entityCount = (resourceInfo.Length - 64) / _blockSize;
+          long entityCount = (resourceInfo.Length - _headerSize) / _blockSize;
 
           if (key >= entityCount)
           {
@@ -497,7 +498,7 @@ public class Restd
           }
           else
           {
-            long insertOffset = 64 + _byteOrderMarkSize + key * _blockSize;
+            long insertOffset = _headerSize + _byteOrderMarkSize + key * _blockSize;
 
             resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
 
@@ -561,11 +562,11 @@ public class Restd
         lock (SyncRoot)
         {
           FileInfo resourceInfo = new FileInfo(_restdFile);
-          long entityCount = (resourceInfo.Length - 64) / _blockSize;
+          long entityCount = (resourceInfo.Length - _headerSize) / _blockSize;
 
           if (key < entityCount)
           {
-            long insertOffset = 64 + _byteOrderMarkSize + key * _blockSize;
+            long insertOffset = _headerSize + _byteOrderMarkSize + key * _blockSize;
 
             resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
 
@@ -657,11 +658,24 @@ public class Restd
 
         resource.Seek(0L, SeekOrigin.Begin);
 
-        char[] headerBuffer = new char[64];
+        char[] headerBuffer = new char[_headerSize];
         StreamReader resourceReader = new StreamReader(resource);
-        resourceReader.Read(headerBuffer, 0, 64);
+        resourceReader.Read(headerBuffer, 0, _headerSize);
 
         string restdHeader = new String(headerBuffer);
+
+        Regex headerSizeRegEx = new Regex(@"""headerSize"":(?<len>[0-9]+)");
+        Match headerSizeMatch = headerSizeRegEx.Match(restdHeader);
+
+        if (headerSizeMatch.Groups["len"].Success && Int32.TryParse(headerSizeMatch.Groups["len"].Captures[0].Value, out _headerSize))
+        {
+          // New headerSize
+          resource.Seek(0L, SeekOrigin.Begin);
+
+          headerBuffer = new char[_headerSize];
+          resourceReader.Read(headerBuffer, 0, _headerSize);
+        }
+
         Regex recordLengthRegEx = new Regex(@"""blockSize"":(?<len>[0-9]+)");
         Match recordMatch = recordLengthRegEx.Match(restdHeader);
 

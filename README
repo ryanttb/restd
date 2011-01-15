@@ -2,6 +2,8 @@
 
 == Changelog ==
 
+=== 0.2.2 ===
+
 === 0.2.1 (2011-01-15) ===
 * svc - asp - Allow developer to change default location for .restd files
 * svc - asp - Allow null security functions (use delegates) so that we don't waste time if they want, e.g., CanGet but not CanGetItem and especially not CanDelete which doesn't need to build the entitySting if there's no interceptor
@@ -14,7 +16,7 @@
 === 0.1.0 === 
 * svc - asp - Initial stab at ASP.NET restd service
 * tools - js - wellrestd - Initial stab at JavaScript wellrestd tool
-* svc - asp - restd - Support GET, POST, PUT & DELETE
+* svc - asp - Support GET, POST, PUT & DELETE
 * svc - asp - ORestd - Support GET, POST, PUT & DELETE
 * svc - asp - ORestd - Support simple $filter
 * svc - asp - ORestd - Support $count
@@ -25,12 +27,15 @@
 * svc - asp - Add simple full-text queries
 
 === Todo === 
+* svc - asp - Actually use headerSize
+* svc - asp - Handle -1 blockSize restd files
+* tools - arrestdX - Write tool design
+* svc - asp - Allow spaces between the header properties & values when parsing
 * svc - asp - Allow service to modify resource name before action processing?
 * svc - asp - Allow the resource name to differ from the restd file name?
 * svc - asp - Allow service to process resource name before action processing, e.g., create a new resource if desired
 * svc - asp - Lock the file for writing as well as (or instead of) the .NET process
 * svc - asp - Block the process until the file is unlocked during POST,PUT & DELETE
-* svc - asp - Actually use headerSize
 * svc - asp - ORestd - Verify that stash characters in strings don't mess up writing JSON to output
 * svc - asp - ORestd - Verify that stash characters in $filters don't mess up writing JSON to output
 
