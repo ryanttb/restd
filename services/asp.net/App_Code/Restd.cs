@@ -393,7 +393,7 @@ public class Restd
     return status;
   }
 
-  public HttpStatusCode PostItem(string entityData, out int? key)
+  public HttpStatusCode PostItem(string entityData, out int? key, TextWriter output)
   {
     HttpStatusCode status = HttpStatusCode.OK;
 
@@ -457,10 +457,15 @@ public class Restd
       }
     }
 
+    if (status == HttpStatusCode.OK)
+    {
+      status = GetItem(key.Value, output);
+    }
+
     return status;
   }
 
-  public HttpStatusCode PutItem(int key, string entityData)
+  public HttpStatusCode PutItem(int key, string entityData, TextWriter output)
   {
     HttpStatusCode status = HttpStatusCode.OK;
 
@@ -530,31 +535,39 @@ public class Restd
       status = HttpStatusCode.InternalServerError;
     }
 
+    if (status == HttpStatusCode.OK)
+    {
+      status = GetItem(key, output);
+    }
+
     return status;
   }
 
-  public HttpStatusCode DeleteItem(int key)
+  public HttpStatusCode DeleteItem(int key, TextWriter output)
   {
-    HttpStatusCode status = HttpStatusCode.OK;
+    HttpStatusCode status = _constructorStatus;
 
     FileStream resourceStream = null;
+    string entryString = "";
 
     try
     {
+      StringBuilder entryBuilder = new StringBuilder();
+      StringWriter entryWriter = new StringWriter(entryBuilder);
+
       if (status == HttpStatusCode.OK)
       {
-        if (_options.CanDelete != null)
-        {
-          StringBuilder entryBuilder = new StringBuilder();
-          StringWriter entryWriter = new StringWriter(entryBuilder);
+        status = GetItem(key, entryWriter);
+      }
 
-          status = GetItem(key, entryWriter);
+      if (status == HttpStatusCode.OK)
+      {
+        entryString = entryWriter.ToString();
+      }
 
-          if (status == HttpStatusCode.OK && !_options.CanDelete(_restdFile, key, entryBuilder.ToString()))
-          {
-            status = HttpStatusCode.Unauthorized;
-          }
-        }
+      if (status == HttpStatusCode.OK && _options.CanDelete != null && !_options.CanDelete(_restdFile, key, entryString))
+      {
+        status = HttpStatusCode.Unauthorized;
       }
 
       if (status == HttpStatusCode.OK)
@@ -585,6 +598,11 @@ public class Restd
     {
       Trace.WriteLine(ex.Message);
       status = HttpStatusCode.InternalServerError;
+    }
+
+    if (status == HttpStatusCode.OK)
+    {
+      output.Write(entryString);
     }
 
     return status;

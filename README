@@ -1,8 +1,14 @@
 == Readme ==
+Document-oriented database-like functionality without the database.
+
+restd is a file format + HTTP service spec + tool design
 
 == Changelog ==
+* svc - asp - Actually use headerSize
 
 === 0.2.2 ===
+* svc - asp - Add test/example page
+* svc - asp - POST, PUT & DELETE should return the object as it was added or deleted, including _restd property
 
 === 0.2.1 (2011-01-15) ===
 * svc - asp - Allow developer to change default location for .restd files
@@ -27,7 +33,12 @@
 * svc - asp - Add simple full-text queries
 
 === Todo === 
-* svc - asp - Actually use headerSize
+* restd.net - svc - Update POST, PUT & DELETE to new result style (200 response returns full object even after delete)
+* restd.net - svc - Describe how to handle _restd properties sent as data to POST and PUT requests; remove them from the input or return a bad status
+* svc - asp - Ensure that no _restd properties enter the restd file
+* restd.net - svc - Add section on security
+* restd.net - svc - Add section on sending application/x-www-form-urlencoded data instead of json
+* restd.net - svc - Add: empty query argument should act as no query, i.e., get all
 * svc - asp - Handle -1 blockSize restd files
 * tools - arrestdX - Write tool design
 * svc - asp - Allow spaces between the header properties & values when parsing

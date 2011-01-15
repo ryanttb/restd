@@ -140,12 +140,7 @@ public class RestdSvc : IHttpHandler
             }
             else
             {
-              status = restd.PostItem(content, out key);
-            }
-
-            if (status == HttpStatusCode.OK)
-            {
-              context.Response.Write(key);
+              status = restd.PostItem(content, out key, context.Response.Output);
             }
             break;
 
@@ -204,12 +199,7 @@ public class RestdSvc : IHttpHandler
               }
               else
               {
-                status = restd.PutItem(key.Value, content);
-              }
-
-              if (status == HttpStatusCode.OK)
-              {
-                context.Response.Write(key);
+                status = restd.PutItem(key.Value, content, context.Response.Output);
               }
             }
             break;
@@ -221,11 +211,7 @@ public class RestdSvc : IHttpHandler
             }
             else
             {
-              status = restd.DeleteItem(key.Value);
-              if (status == HttpStatusCode.OK)
-              {
-                context.Response.Write(key);
-              }
+              status = restd.DeleteItem(key.Value, context.Response.Output);
             }
             break;
 

@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <title>restd test</title>
+  <style type="text/css">
+    label
+    {
+      display: block;
+      margin: .5em auto;
+    }
+    label span
+    {
+      display: inline-block;
+      width: 8em;
+    }
+    th
+    {
+      text-align: right;
+    }
+    textarea
+    {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    restd test</h1>
+  <p>
+    This page allows you to perform all restd functions against a restd service. It is patterned after the restdman tool but since it requires a restd service, this page does not satisfy the restdman design. A restdman tool should read/write physical restd files directly.</p>
+  <h2>
+    config</h2>
+  <label>
+    <span>service name</span>
+    <input id="txtService" type="text" value="RestdSvc.ashx" />
+  </label>
+  <label>
+    <span>restd resource</span>
+    <input id="txtResource" type="text" value="/TestData" />
+  </label>
+  <table>
+    <tr>
+      <th>
+        your request
+      </th>
+      <td id="lblRequest">
+      </td>
+    </tr>
+    <tr>
+      <th>
+        http response status
+      </th>
+      <td id="lblStatus">
+      </td>
+    </tr>
+    <tr>
+      <th>
+        result data
+      </th>
+      <td>
+        &nbsp;
+      </td>
+    </tr>
+    <tr>
+      <td id="lblResult" colspan="2">
+      </td>
+    </tr>
+  </table>
+  <h2>
+    get</h2>
+  <p>
+    Use HTTP GET to retrieve data from a restd service.</p>
+  <p>
+    Use the buttons to send requests. Your results will show in the table above.</p>
+  <h3>
+    everything</h3>
+  <p>
+    A GET request to a resource with no other arguments returns all available objects.</p>
+  <button id="cmdGetAll" type="button">
+    get everything</button>
+  <h3>
+    just one</h3>
+  <p>
+    A GET request to a resource specifying a particular object by key.</p>
+  <label>
+    <span>object key</span>
+    <input id="txtGetKey" type="text" value="0" />
+  </label>
+  <button id="cmdGetOne" type="button">
+    get one</button>
+  <h3>
+    query</h3>
+  <p>
+    A GET request to a resource specifying a query.</p>
+  <label>
+    <span>query</span>
+    <input id="txtGetQuery" type="text" value="" />
+  </label>
+  <button id="cmdGetQuery" type="button">
+    query</button>
+  <h2>
+    post</h2>
+  <p>
+    Use HTTP POST to add a new object to the resource.
+  </p>
+  <p>
+    Enter your data as a JavaScript object in JSON format and click the button. Your response will show in the table above.</p>
+  <label>
+    <span>post data</span>
+    <textarea id="txtPost" rows="8" cols="60">{"foo":"bar","baz":42}</textarea>
+  </label>
+  <button id="cmdPost" type="button">
+    post</button>
+  <h2>
+    put</h2>
+  <p>
+    Use HTTP PUT to update an existing object in the resource.
+  </p>
+  <p>
+    Enter your data as a JavaScript object in JSON format and click the button. Your response will show in the table above.</p>
+  <label>
+    <span>object key</span>
+    <input id="txtPutKey" type="text" value="0" />
+  </label>
+  <label>
+    <span>put data</span>
+    <textarea id="txtPut" rows="8" cols="60">{"foo":"bar","baz":5,"updated":true}</textarea>
+  </label>
+  <button id="cmdPut" type="button">
+    put</button>
+  <h2>
+    delete</h2>
+  <p>
+    Use HTTP DELETE to delete an existing object in the resource.</p>
+  <label>
+    <span>object key</span>
+    <input id="txtDeleteKey" type="text" value="0" />
+  </label>
+  <button id="cmdDelete" type="button">
+    delete</button>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js"></script>
+  <script src="js/json2.js"></script>
+  <script>
+    $(function () {
+      function sendRequest(method, request, data) {
+        $("#lblRequest").text(request);
+        $.ajax({
+          type: method,
+          url: request,
+          contentType: "application/json",
+          data: data,
+          dataType: "json",
+          success: function (data, textStatus, xhr) {
+            $("#lblStatus").text(xhr.status);
+            $("#lblResult").text(JSON.stringify(data));
+          },
+          error: function (xhr, textStatus, errorThrown) {
+            $("#lblStatus").text(xhr.status);
+            $("#lblResult").text(textStatus);
+          }
+        });
+      }
+
+      $("#cmdGetAll").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val();
+        sendRequest("GET", request);
+      });
+
+      $("#cmdGetOne").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val() + "/" + $("#txtGetKey").val();
+        sendRequest("GET", request);
+      });
+
+      $("#cmdGetQuery").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val() + "&q=" + $("#txtGetQuery").val();
+        sendRequest("GET", request);
+      });
+
+      $("#cmdPost").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val();
+        sendRequest("POST", request, $("#txtPost").val());
+      });
+
+      $("#cmdPut").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val() + "/" + $("#txtPutKey").val();
+        sendRequest("PUT", request, $("#txtPut").val());
+      });
+
+      $("#cmdDelete").click(function () {
+        var request = $("#txtService").val() + "?/=" + $("#txtResource").val() + "/" + $("#txtGetKey").val();
+        sendRequest("DELETE", request);
+      });
+    });
+  </script>
+</body>
+</html>
