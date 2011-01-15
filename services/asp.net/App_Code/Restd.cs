@@ -8,66 +8,94 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 
-public interface IRestdInterceptor
+/// <summary>
+/// Map a restd resource to a physical restd file
+/// </summary>
+/// <param name="resourceName">Restd resource name starting with /</param>
+/// <returns>Path to a physical file</returns>
+/// <remarks>
+/// This is the only required delegate in the RestdOptions.
+/// </remarks>
+public delegate string GetRestdFileDelegate(string resourceName);
+
+/// <summary>
+/// Return a URI to the restd resources so that a restd resource name can be appended
+/// </summary>
+/// <returns>Uri to resource base</returns>
+/// <remarks>
+/// A URI so that the return value + /resourcename makes sense for your service.
+/// </remarks>
+public delegate string GetBaseUriDelegate();
+
+/// <summary>
+/// Allow/deny a client to query a resource
+/// </summary>
+/// <param name="resourceName">Restd resource to query</param>
+/// <param name="query">Query, empty if not supplied</param>
+/// <returns>true to allow the client to query</returns>
+/// <remarks>
+/// You may modify the query. The modified query will be used instead.
+/// </remarks>
+public delegate bool CanGetDelegate(string resourceName, ref string query);
+
+/// <summary>
+/// While a GET is taking place, allow/deny a client to a specific item
+/// </summary>
+/// <param name="resourceName">Restd resource to query</param>
+/// <param name="key">Restd key of the item being considered</param>
+/// <param name="content">Content of the item being considered</param>
+/// <returns>true to allow the client to retrieve this item</returns>
+/// <remarks>
+/// You may modify the content. The modified JSON will be sent instead.
+/// Do not modify the _restd property.
+/// </remarks>
+public delegate bool CanGetItemDelegate(string resourceName, int key, ref string content);
+
+/// <summary>
+/// Allow/deny a client to insert a specific item
+/// </summary>
+/// <param name="resourceName">Restd resource to insert into</param>
+/// <param name="content">Content of the item being inserted</param>
+/// <returns>true to allow the client to insert this item</returns>
+/// <remarks>
+/// You may modify the content. The modified JSON will be inserted instead.
+/// </remarks>
+public delegate bool CanPostDelegate(string resourceName, ref string content);
+
+/// <summary>
+/// Allow/deny a client to update a specific item
+/// </summary>
+/// <param name="resourceName">Restd resource to update into</param>
+/// <param name="key">Restd key of the item being updated</param>
+/// <param name="content">Content of the item being updated</param>
+/// <returns>true to allow the client to update this item</returns>
+/// <remarks>
+/// You may modify the content. The modified JSON will be updated instead.
+/// </remarks>
+public delegate bool CanPutDelegate(string resourceName, int key, ref string content);
+
+/// <summary>
+/// Allow/deny a client to delete a specific item
+/// </summary>
+/// <param name="resourceName">Restd resource to delete from</param>
+/// <param name="key">Restd key of the item being deleted</param>
+/// <param name="content">Content of the item being deleted</param>
+/// <returns>true to allow the client to delete this item</returns>
+/// <remarks>
+/// You cannot modify the content of the item being deleted.
+/// </remarks>
+public delegate bool CanDeleteDelegate(string resourceName, int key, string content);
+
+public class RestdOptions
 {
-  /// <summary>
-  /// Allow/deny a client to query a resource
-  /// </summary>
-  /// <param name="restdFile">Restd resource file to query</param>
-  /// <param name="query">Query, empty if not supplied</param>
-  /// <returns>true to allow the client to query</returns>
-  /// <remarks>
-  /// You may modify the query. The modified query will be used instead.
-  /// </remarks>
-  bool CanGet(string restdFile, ref string query);
+  public GetRestdFileDelegate GetRestdFile = null;
+  public GetBaseUriDelegate GetBaseUri = null;
 
-  /// <summary>
-  /// While a query is taking place, allow/deny a client to a specific item
-  /// </summary>
-  /// <param name="restdFile">Restd resource file to query</param>
-  /// <param name="key">Restd key of the item being considered</param>
-  /// <param name="content">Content of the item being considered</param>
-  /// <returns>true to allow the client to retrieve this item</returns>
-  /// <remarks>
-  /// You may modify the content. The modified JSON will be sent instead.
-  /// Do not remove the _restd property.
-  /// </remarks>
-  bool CanGetItem(string restdFile, int key, ref string content);
-
-  /// <summary>
-  /// Allow/deny a client to insert a specific item
-  /// </summary>
-  /// <param name="restdFile">Restd resource file to insert into</param>
-  /// <param name="content">Content of the item being inserted</param>
-  /// <returns>true to allow the client to insert this item</returns>
-  /// <remarks>
-  /// You may modify the content. The modified JSON will be inserted instead.
-  /// </remarks>
-  bool CanPost(string restdFile, ref string content);
-
-  /// <summary>
-  /// Allow/deny a client to update a specific item
-  /// </summary>
-  /// <param name="restdFile">Restd resource file to update into</param>
-  /// <param name="key">Restd key of the item being updated</param>
-  /// <param name="content">Content of the item being updated</param>
-  /// <returns>true to allow the client to update this item</returns>
-  /// <remarks>
-  /// You may modify the content. The modified JSON will be updated instead.
-  /// </remarks>
-  bool CanPut(string restdFile, int key, ref string content);
-
-  /// <summary>
-  /// Allow/deny a client to delete a specific item
-  /// </summary>
-  /// <param name="restdFile">Restd resource file to delete from</param>
-  /// <param name="key">Restd key of the item being deleted</param>
-  /// <param name="content">Content of the item being deleted</param>
-  /// <returns>true to allow the client to delete this item</returns>
-  /// <remarks>
-  /// You cannot modify the content of the item being deleted.
-  /// </remarks>
-  bool CanDelete(string restdFile, int key, string content);
+  public CanGetDelegate CanGet = null;
+  public CanGetItemDelegate CanGetItem = null;
+  public CanPostDelegate CanPost = null;
+  public CanPutDelegate CanPut = null;
+  public CanDeleteDelegate CanDelete = null;
 }
 
 /// <summary>
@@ -83,53 +111,45 @@ public class Restd
 
   private string EntryPrefixFormat = @"{{ ""_restd"": ""{0}/{1}"", ";
 
+  private RestdOptions _options = null;
+
   private string _restdFile = "";
   private string _serviceUri = "";
-  private string _resourcePath = "";
+  private string _resourceName = "";
   private int _byteOrderMarkSize = 3;
   private int _blockSize = -1;
+
   private HttpStatusCode _constructorStatus = HttpStatusCode.OK;
 
-  public IRestdInterceptor Interceptor { get; set; }
-
-  public Restd(string restdFile)
-  {
-    Initialize(restdFile, null, null);
-  }
-
-  public Restd(string restdFile, string serviceUri)
-  {
-    Initialize(restdFile, serviceUri, null);
-  }
-
-  public Restd(string restdFile, string serviceUri, IRestdInterceptor interceptor)
-  {
-    Initialize(restdFile, serviceUri, interceptor);
-  }
-
-  private void Initialize(string restdFile, string serviceUri, IRestdInterceptor interceptor)
+  public Restd(string resourceName, RestdOptions options)
   {
     HttpStatusCode status = HttpStatusCode.OK;
 
-    if (!String.IsNullOrEmpty(serviceUri))
+    if (String.IsNullOrEmpty(resourceName) || options == null || options.GetRestdFile == null)
     {
-      _serviceUri = serviceUri;
+      status = HttpStatusCode.BadRequest;
     }
-
-    if (!File.Exists(restdFile))
+    else
     {
-      status = HttpStatusCode.NotFound;
+      _resourceName = resourceName;
+      _options = options;
+      _restdFile = _options.GetRestdFile(resourceName);
+
+      if (_options.GetBaseUri != null)
+      {
+        _serviceUri = _options.GetBaseUri();
+      }
+
+      if (!File.Exists(_restdFile))
+      {
+        status = HttpStatusCode.NotFound;
+      }
     }
 
     if (status == HttpStatusCode.OK)
     {
-      _resourcePath = "/" + Path.GetFileNameWithoutExtension(restdFile);
-      _restdFile = restdFile;
-
       status = ReadHeader();
     }
-
-    Interceptor = interceptor;
 
     _constructorStatus = status;
   }
@@ -172,12 +192,17 @@ public class Restd
   {
     HttpStatusCode status = _constructorStatus;
 
+    if (status != HttpStatusCode.OK)
+    {
+      return status;
+    }
+
     FileStream resourceStream = null;
 
     try
     {
       query = query ?? "";
-      if (Interceptor != null && !Interceptor.CanGet(this._restdFile, ref query))
+      if (_options.CanGet != null && !_options.CanGet(this._restdFile, ref query))
       {
         status = HttpStatusCode.Unauthorized;
       }
@@ -218,14 +243,14 @@ public class Restd
             string entryString = null;
             bool canGetItem = true;
 
-            if (Interceptor != null)
+            if (_options.CanGetItem != null)
             {
               if (entryString == null)
               {
                 entryString = GetEntryString(index, entryBuffer);
               }
 
-              canGetItem = Interceptor.CanGetItem(_restdFile, index, ref entryString);
+              canGetItem = _options.CanGetItem(_restdFile, index, ref entryString);
             }
 
             if (canGetItem)
@@ -243,7 +268,7 @@ public class Restd
                 }
                 else
                 {
-                  output.Write(EntryPrefixFormat, _resourcePath, index);
+                  output.Write(EntryPrefixFormat, _resourceName, index);
 
                   WriteEntryProperties(entryBuffer, output);
 
@@ -344,7 +369,7 @@ public class Restd
 
       if (status == HttpStatusCode.OK)
       {
-        output.Write(EntryPrefixFormat, _resourcePath, key);
+        output.Write(EntryPrefixFormat, _resourceName, key);
 
         WriteEntryProperties(entryBuffer, output);
 
@@ -387,7 +412,7 @@ public class Restd
 
       if (status == HttpStatusCode.OK)
       {
-        if (Interceptor != null && !Interceptor.CanPost(_restdFile, ref entityData))
+        if (_options.CanPost != null && !_options.CanPost(_restdFile, ref entityData))
         {
           status = HttpStatusCode.Unauthorized;
         }
@@ -453,7 +478,7 @@ public class Restd
 
       if (status == HttpStatusCode.OK)
       {
-        if (Interceptor != null && !Interceptor.CanPut(_restdFile, key, ref entityData))
+        if (_options.CanPut != null && !_options.CanPut(_restdFile, key, ref entityData))
         {
           status = HttpStatusCode.Unauthorized;
         }
@@ -517,14 +542,14 @@ public class Restd
     {
       if (status == HttpStatusCode.OK)
       {
-        if (Interceptor != null)
+        if (_options.CanDelete != null)
         {
           StringBuilder entryBuilder = new StringBuilder();
           StringWriter entryWriter = new StringWriter(entryBuilder);
 
           status = GetItem(key, entryWriter);
 
-          if (status == HttpStatusCode.OK && !Interceptor.CanDelete(_restdFile, key, entryBuilder.ToString()))
+          if (status == HttpStatusCode.OK && !_options.CanDelete(_restdFile, key, entryBuilder.ToString()))
           {
             status = HttpStatusCode.Unauthorized;
           }
@@ -698,7 +723,7 @@ public class Restd
     StringBuilder entryBuilder = new StringBuilder();
     StringWriter entryWriter = new StringWriter(entryBuilder);
 
-    entryWriter.Write(EntryPrefixFormat, _resourcePath, index);
+    entryWriter.Write(EntryPrefixFormat, _resourceName, index);
     WriteEntryProperties(entryBuffer, entryWriter);
     entryWriter.Write('}');
 

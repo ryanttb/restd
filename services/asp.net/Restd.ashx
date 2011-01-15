@@ -9,33 +9,30 @@ using System.Web;
 
 using DTrace = System.Diagnostics.Trace;
 
-public class RestdSvc : IHttpHandler, IRestdInterceptor
+public class RestdSvc : IHttpHandler
 {
   private static object SyncRoot = new object();
 
-  public virtual bool CanGet(string restdFile, ref string query)
+  /// <summary>
+  /// Set the options for this service
+  /// </summary>
+  /// <returns>New options</returns>
+  /// <remarks>
+  /// You can modify the return value directly or
+  /// inherit RestdSvc in another handler and override this method.
+  /// </remarks>
+  protected virtual RestdOptions GetOptions()
   {
-    return true;
-  }
-
-  public virtual bool CanGetItem(string restdFile, int key, ref string content)
-  {
-    return true;
-  }
-
-  public virtual bool CanPost(string restdFile, ref string content)
-  {
-    return true;
-  }
-
-  public virtual bool CanPut(string restdFile, int key, ref string content)
-  {
-    return true;
-  }
-
-  public virtual bool CanDelete(string restdFile, int key, string content)
-  {
-    return true;
+    return new RestdOptions()
+    {
+      GetRestdFile = (resourceName) => HttpContext.Current.Server.MapPath("~/App_Data" + resourceName + ".restd"),
+      GetBaseUri = () => HttpContext.Current.Request.Url.AbsoluteUri.Replace(HttpContext.Current.Request.Url.Query, "?/="),
+      CanGet = null,
+      CanGetItem = null,
+      CanPost = null,
+      CanPut = null,
+      CanDelete = null
+    };
   }
 
   public void ProcessRequest(HttpContext context)
@@ -72,8 +69,8 @@ public class RestdSvc : IHttpHandler, IRestdInterceptor
       {
         string contentType = "";
         string content = "";
-        
-        Restd restd = new Restd(context.Server.MapPath("~/App_Data" + resource + ".restd"), context.Request.Url.AbsoluteUri.Replace(context.Request.Url.Query, "?/="), this);
+
+        Restd restd = new Restd(resource, GetOptions());
         switch (context.Request.HttpMethod)
         {
           case "GET":
