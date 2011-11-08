@@ -1,0 +1,55 @@
+=== Todo === 
+* restd.net - svc - Update POST, PUT & DELETE to new result style (200 response returns full object even after delete)
+* restd.net - svc - Describe how to handle _restd properties sent as data to POST and PUT requests; remove them from the input or return a bad status
+* svc - asp - Ensure that no _restd properties enter the restd file
+* restd.net - svc - Add section on security
+* restd.net - svc - Add section on sending application/x-www-form-urlencoded data instead of json
+* restd.net - svc - Add: empty query argument should act as no query, i.e., get all
+* svc - asp - Handle -1 blockSize restd files
+* tools - arrestdX - Write tool design
+* svc - asp - Allow spaces between the header properties & values when parsing
+* svc - asp - Allow service to modify resource name before action processing?
+* svc - asp - Allow the resource name to differ from the restd file name?
+* svc - asp - Allow service to process resource name before action processing, e.g., create a new resource if desired
+* svc - asp - Lock the file for writing as well as (or instead of) the .NET process
+* svc - asp - Block the process until the file is unlocked during POST,PUT & DELETE
+* svc - asp - ORestd - Verify that stash characters in strings don't mess up writing JSON to output
+* svc - asp - ORestd - Verify that stash characters in $filters don't mess up writing JSON to output
+
+==2011-10-15===
+===notes===
+I found some old notes. I should look through them at some point & add things to the to do list.
+
+Spray data if no filter
+Support associations via _deferred in row
+Support expand directive 
+Base class named Restd 
+Most functionality in Rest
+If you don't put a resource, default to /
+Odata mentions server-specific functions, may be how I add spatial queries
+Check out what $metadata&$format=json looks like
+Potentially add an __id property
+The type should be EndpointName.ResourceName
+Don't save if larger than block size
+
+===more notes===
+Tools
+wellrestd [restd file]
+Default: report
+  Valid json?
+  Valid restd?
+  Current header info
+  Number of records
+/blockSize: change blockSize
+  Number or 'tucked' or 'fluffed [size]'
+  Fluffed will take longest record, add fluff value & pad to file system boundary
+-vaccuum
+
+restdman
+  Edits & queries restd files
+/get: get all
+/get index: item
+/query query: query
+/post json
+/put index json
+/delete index

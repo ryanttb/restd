@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Extract Layer</title>
+  <style type="text/css">
+    label, form > input, body > div
+    {
+      clear: left;
+      float: left;
+      margin: .5em;
+    }
+  </style>
+</head>
+<body>
+  <form action="ExtractLayer.html">
+    <label>
+      Layer Data URI
+      <input type="text" name="url" style="width: 32em;" value="GetJson.ashx?OK_ProviderPortal.Census_Blocks.json" /></label>
+    <label>
+      restd Resource
+      <input type="text" name="resource" style="width: 16em;" value="/OK_Census_Blocks" /></label>
+    <input type="submit" value="Extract" />
+  </form>
+  <div id="output">
+  </div>
+
+  <script src="http://ajax.microsoft.com/ajax/jquery/jquery-1.4.2.js" type="text/javascript"></script>
+
+  <script src="json2.js" type="text/javascript"></script>
+
+  <script type="text/javascript">
+    $(function() {
+      $("form").submit(function() {
+        $("#output").html("");
+        $.ajax({
+          type: "GET",
+          url: $("input[name=url]").val(),
+          dataType: "json",
+          success: function(data, statusText) {
+            $.each(data.features, function(index) {
+              var postData = JSON.stringify({
+                blockId: this.attributes.ref_BlockID,
+                shape: this.geometry
+              });
+              setTimeout(function() {
+                $.ajax({
+                  type: "POST",
+                  url: "PortalData.ashx?/=" + $("input[name=resource]").val(),
+                  dataType: "json",
+                  data: postData,
+                  success: function(result, statusText) {
+                    //$("#output").html($("#output").html() + result + "<br/>");
+                  },
+                  error: function(request, statusText, errorThrown) {
+                    $("#output").html($("#output").html() + request.status + " - " + request.statusText + "<br/>" + statusText + "<br/>");
+                  }
+                });
+              }, 1000);
+            });
+          },
+          error: function(request, statusText, errorThrown) {
+            alert(request.status + " - " + request.statusText + " - " + statusText);
+          }
+        });
+
+        return false;
+      });
+
+      $("input:text:first").focus();
+    });
+  </script>
+
+</body>
+</html>

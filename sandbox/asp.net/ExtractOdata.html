@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Extract OData</title>
+  <style type="text/css">
+    label
+    {
+      float: left;
+      clear: left;
+      margin: 8px;
+    }
+    label input, label textarea
+    {
+      vertical-align: middle;
+      width: 256px;
+    }
+    #cmdExtract, #output
+    {
+      float: left;
+      clear: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    Extract OData</h1>
+  <p>
+    Extract data from an OData URL and store it in a restd service.</p>
+  <label>
+    OData URL
+    <input type="text" name="odataUrl" value="RestdData.svc/EO_ANIMAL" /></label>
+  <label>
+    Delete properties (comma-separated)
+    <input type="text" name="rmProp" value="__metadata" /></label>
+  <label>
+    Add properties (JSON)
+    <textarea name="addProp" rows="4" cols="8">{"Category":"Animal"}</textarea>
+  </label>
+  <label>
+    restd resource
+    <input type="text" name="restdResource" value="/OLBE" /></label>
+  <input type="button" id="cmdExtract" value="Extract" />
+  <div id="output">
+  </div>
+
+  <script src="http://ajax.microsoft.com/ajax/jquery/jquery-1.4.2.min.js" type="text/javascript"></script>
+
+  <script src="json2.js" type="text/javascript"></script>
+
+  <script type="text/javascript">
+    $(function() {
+      $("input:text:eq(0)").focus();
+
+      $("#cmdExtract").click(function(e) {
+        $("#output").html("");
+        $.ajax({
+          type: "GET",
+          url: $("input[name=odataUrl]").val(),
+          dataType: "json",
+          success: function(data, statusText) {
+            $("#output").html($("#output").html() + "GET succeeded<br/>");
+            extractData(data);
+          },
+          error: function(request, statusText, errorThrown) {
+          $("#output").html($("#output").html() + "error: " + statusText + "<br/>");
+          if (statusText == "parsererror") {
+            $("#output").html($("#output").html() + "attempting secondary parse<br/>");
+            var data = null;
+              // Try anyway
+              try {
+                data = JSON.parse(request.responseText);
+              } catch (ex) {
+                $("#output").html($("#output").html() + " fatal<br/>");
+              }
+
+              if (data == null) {
+                $("#output").html($("#output").html() + " fatal<br/>");
+              } else {
+                extractData(data);
+              }
+
+            }
+          }
+        });
+      });
+
+      function extractData(data) {
+        var rmProps = $("input[name=rmProp]").val().split(',');
+        var addProp = $.parseJSON($("textarea").val());
+
+        $.each(data.d, function(index) {
+          var thisData = this;
+
+          if (rmProps != null) {
+            for (var i = 0; i < rmProps.length; i++) {
+              delete thisData[rmProps[i]];
+            }
+          }
+
+          if (typeof addProp === "object") {
+            thisData = $.extend(thisData, addProp);
+          }
+          var postData = JSON.stringify(thisData);
+
+          setTimeout(function() {
+            $.ajax({
+              type: "POST",
+              url: "PortalData.ashx?/=" + $("input[name=restdResource]").val(),
+              dataType: "json",
+              data: encodeURIComponent(postData),
+              success: function(result, statusText) {
+                $("#output").html($("#output").html() + result + "<br/>");
+              },
+              error: function(request, statusText, errorThrown) {
+                $("#output").html($("#output").html() + request.status + " - " + request.statusText + "<br/>" + statusText + "<br/>");
+              }
+            });
+          }, 500);
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>

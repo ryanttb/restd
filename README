@@ -32,21 +32,3 @@ restd is a file format + HTTP service spec + tool design
 * svc - asp - Change key query from (key) to /key
 * svc - asp - Add simple full-text queries
 
-=== Todo === 
-* restd.net - svc - Update POST, PUT & DELETE to new result style (200 response returns full object even after delete)
-* restd.net - svc - Describe how to handle _restd properties sent as data to POST and PUT requests; remove them from the input or return a bad status
-* svc - asp - Ensure that no _restd properties enter the restd file
-* restd.net - svc - Add section on security
-* restd.net - svc - Add section on sending application/x-www-form-urlencoded data instead of json
-* restd.net - svc - Add: empty query argument should act as no query, i.e., get all
-* svc - asp - Handle -1 blockSize restd files
-* tools - arrestdX - Write tool design
-* svc - asp - Allow spaces between the header properties & values when parsing
-* svc - asp - Allow service to modify resource name before action processing?
-* svc - asp - Allow the resource name to differ from the restd file name?
-* svc - asp - Allow service to process resource name before action processing, e.g., create a new resource if desired
-* svc - asp - Lock the file for writing as well as (or instead of) the .NET process
-* svc - asp - Block the process until the file is unlocked during POST,PUT & DELETE
-* svc - asp - ORestd - Verify that stash characters in strings don't mess up writing JSON to output
-* svc - asp - ORestd - Verify that stash characters in $filters don't mess up writing JSON to output
-

@@ -1,0 +1,493 @@
+﻿<%@ WebHandler Language="C#" Class="PortalData" %>
+
+using System;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
+using System.Web;
+
+using DTrace = System.Diagnostics.Trace;
+
+public class PortalData : IHttpHandler
+{
+  public class RestdHeader
+  {
+    public int EntrySize = -1;
+  }
+
+  public void ProcessRequest(HttpContext context)
+  {
+    context.Response.ContentType = "application/json";
+
+    if (System.Diagnostics.Debugger.IsAttached)
+    {
+      context.Response.CacheControl = "no-cache";
+    }
+
+    try
+    {
+      string queryString = HttpUtility.UrlDecode(context.Request.QueryString.ToString());
+      if (queryString.StartsWith("/="))
+      {
+        queryString = queryString.Remove(0, 2);
+      }
+
+      DTrace.WriteLine("PortalData: " + queryString);
+
+      string[] resources = GetResources(context);
+
+      string resource;
+      int? key;
+
+      if (!TryParseResourceAndKey(queryString, out resource, out key))
+      {
+        context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+      }
+      else if (!(resource == "/" || resources.Count(r => r == resource) > 0))
+      {
+        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+      }
+      else
+      {
+        switch (context.Request.HttpMethod)
+        {
+          case "GET":
+            DoGet(context, resources, resource, key);
+            break;
+
+          case "POST":
+            DoPost(context, resources, resource, key);
+            break;
+
+          case "PUT":
+            DoPut(context, resources, resource, key);
+            break;
+
+          case "DELETE":
+            DoDelete(context, resources, resource, key);
+            break;
+
+          default:
+            context.Response.StatusCode = (int)HttpStatusCode.NotImplemented;
+            break;
+        }
+      }
+    }
+    catch (Exception ex)
+    {
+      DTrace.WriteLine(ex.Message);
+      context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+    }
+  }
+
+  private void DoGet(HttpContext context, string[] resources, string resource, int? key)
+  {
+    if (resource == "/")
+    {
+      string serviceRootFormat = @"{{ ""d"": {{ ""EntitySets"": [{0}] }} }}";
+      string serviceRootEntities = "";
+      if (resources.Length > 0)
+      {
+        serviceRootEntities = "\"" + String.Join(@""", """, resources) + "\"";
+      }
+      string serviceRoot = String.Format(serviceRootFormat, serviceRootEntities);
+      context.Response.Write(serviceRoot);
+    }
+    else
+    {
+      if (resources.Count(r => r == resource) == 0)
+      {
+        context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+      }
+      else
+      {
+        FileStream resourceStream = null;
+
+        try
+        {
+          string _restdFile = context.Server.MapPath("~/App_Data" + resource + ".restd");
+          resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+          RestdHeader header = GetHeader(context, resourceStream);
+
+          char[] entryBuffer = new char[header.EntrySize];
+
+          string entryPrefixFormat =
+  @"{{
+""__metadata"": {{
+""uri"": ""{0}?/={1}({2})"",
+""type"": ""object""
+}},
+";
+
+          if (key != null)
+          {
+            resourceStream.Seek(512 + 3 + key.Value * header.EntrySize, SeekOrigin.Begin);
+
+            StreamReader resourceReader = new StreamReader(resourceStream);
+            int bytesRead = resourceReader.Read(entryBuffer, 0, header.EntrySize);
+            if (!(bytesRead == header.EntrySize && entryBuffer[0] == '{'))
+            {
+              context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+            }
+            else
+            {
+              context.Response.Write(@"{ ""d"": [");
+              context.Response.Write(String.Format(entryPrefixFormat, context.Request.Url.AbsoluteUri.Replace(context.Request.Url.Query, ""), resource, key.Value));
+
+              int subObjectCount = 0;
+              for (int i = 1; i < header.EntrySize; i++)
+              {
+                switch (entryBuffer[i])
+                {
+                  case '{':
+                    subObjectCount++;
+                    break;
+
+                  case '}':
+                    subObjectCount--;
+                    break;
+                }
+
+                if (subObjectCount < 0)
+                {
+                  break;
+                }
+                else
+                {
+                  context.Response.Write(entryBuffer[i]);
+                }
+              }
+
+              context.Response.Write("} ] }");
+            }
+          }
+          else
+          {
+            resourceStream.Seek(512 + 3, SeekOrigin.Begin);
+            StreamReader resourceReader = new StreamReader(resourceStream);
+            context.Response.Write(@"{ ""d"": [");
+
+            int index = 0, count = 0;
+            int bytesRead = resourceReader.Read(entryBuffer, 0, header.EntrySize);
+            while (bytesRead == header.EntrySize)
+            {
+              if (entryBuffer[0] == '{')
+              {
+                if (count > 0)
+                {
+                  context.Response.Write(",");
+                }
+
+                context.Response.Write(String.Format(entryPrefixFormat, context.Request.Url.AbsoluteUri.Replace(context.Request.Url.Query, ""), resource, index));
+
+
+                int subObjectCount = 0;
+                for (int i = 1; i < header.EntrySize; i++)
+                {
+                  switch (entryBuffer[i])
+                  {
+                    case '{':
+                      subObjectCount++;
+                      break;
+
+                    case '}':
+                      subObjectCount--;
+                      break;
+                  }
+
+                  if (subObjectCount < 0)
+                  {
+                    break;
+                  }
+                  else
+                  {
+                    context.Response.Write(entryBuffer[i]);
+                  }
+                }
+
+
+                context.Response.Write("}");
+                count++;
+              }
+
+              index++;
+              bytesRead = resourceReader.Read(entryBuffer, 0, header.EntrySize);
+            }
+
+            context.Response.Write("] }");
+          }
+        }
+        finally
+        {
+          if (resourceStream != null)
+          {
+            resourceStream.Close();
+          }
+        }
+      }
+    }
+  }
+
+  private void DoPost(HttpContext context, string[] resources, string resource, int? key)
+  {
+    if (resource == "/" || key.HasValue)
+    {
+      context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+    }
+    else
+    {
+      string _restdFile = context.Server.MapPath("~/App_Data" + resource + ".restd");
+      RestdHeader header = null;
+
+      FileStream resourceStream = null;
+      try
+      {
+        resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        header = GetHeader(context, resourceStream);
+
+        string entityData = context.Request.Form[0];
+
+        if (entityData[0] != '{' || entityData[entityData.Length - 1] != '}')
+        {
+          context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        }
+        else
+        {
+          FileInfo resourceInfo = new FileInfo(_restdFile);
+          long entityCount = (resourceInfo.Length - 512L) / header.EntrySize;
+          long insertOffset = 512 + 3 + entityCount * header.EntrySize;
+
+          long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
+
+          resourceStream.Lock(insertOffset, header.EntrySize);
+          {
+            StreamWriter resourceWriter = new StreamWriter(resourceStream);
+            resourceWriter.Write(entityData);
+            resourceWriter.Write(",");
+            resourceWriter.Write(new string(' ', header.EntrySize - entityData.Length - 1));
+            resourceWriter.Write("null]}");
+            resourceWriter.Flush();
+          }
+          resourceStream.Unlock(insertOffset, header.EntrySize);
+
+          context.Response.Write(entityCount);
+        }
+      }
+      finally
+      {
+        if (resourceStream != null)
+        {
+          resourceStream.Close();
+        }
+      }
+    }
+  }
+
+  private void DoPut(HttpContext context, string[] resources, string resource, int? key)
+  {
+    if (resource == "/" || !key.HasValue)
+    {
+      context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+    }
+    else
+    {
+      string _restdFile = context.Server.MapPath("~/App_Data" + resource + ".restd");
+      RestdHeader header = null;
+
+      FileStream resourceStream = null;
+      try
+      {
+        resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        header = GetHeader(context, resourceStream);
+
+        string entityData = context.Request.Form[0];
+
+        if (entityData[0] != '{' || entityData[entityData.Length - 1] != '}')
+        {
+          context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        }
+        else
+        {
+          FileInfo resourceInfo = new FileInfo(_restdFile);
+          long entityCount = (resourceInfo.Length - 512L) / header.EntrySize;
+
+          if (key.Value >= entityCount)
+          {
+            context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+          }
+          else
+          {
+            long insertOffset = 512 + 3 + key.Value * header.EntrySize;
+            long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
+
+            if (resourceStream.ReadByte() != (byte)'{')
+            {
+              context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+            }
+            else
+            {
+              insertPos = resourceStream.Seek(-1, SeekOrigin.Current);
+
+              resourceStream.Lock(insertOffset, header.EntrySize);
+              {
+                StreamWriter resourceWriter = new StreamWriter(resourceStream);
+                resourceWriter.Write(entityData);
+                resourceWriter.Write(",");
+                resourceWriter.Write(new string(' ', header.EntrySize - entityData.Length - 1));
+                resourceWriter.Flush();
+              }
+              resourceStream.Unlock(insertOffset, header.EntrySize);
+
+              context.Response.Write(key.Value);
+            }
+          }
+        }
+      }
+      finally
+      {
+        if (resourceStream != null)
+        {
+          resourceStream.Close();
+        }
+      }
+    }
+  }
+
+  private void DoDelete(HttpContext context, string[] resources, string resource, int? key)
+  {
+    if (resource == "/" || !key.HasValue)
+    {
+      context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+    }
+    else
+    {
+      string _restdFile = context.Server.MapPath("~/App_Data" + resource + ".restd");
+      RestdHeader header = null;
+
+      FileStream resourceStream = null;
+      try
+      {
+        resourceStream = new FileStream(_restdFile, FileMode.Open, FileAccess.ReadWrite, FileShare.Read);
+        header = GetHeader(context, resourceStream);
+
+        FileInfo resourceInfo = new FileInfo(_restdFile);
+        long entityCount = (resourceInfo.Length - 512L) / header.EntrySize;
+
+        if (key.Value < entityCount)
+        {
+          long insertOffset = 512 + 3 + key.Value * header.EntrySize;
+
+          long insertPos = resourceStream.Seek(insertOffset, SeekOrigin.Begin);
+
+          resourceStream.Lock(insertOffset, header.EntrySize);
+          {
+            StreamWriter resourceWriter = new StreamWriter(resourceStream);
+            resourceWriter.Write(new string(' ', header.EntrySize));
+            resourceWriter.Flush();
+          }
+          resourceStream.Unlock(insertOffset, header.EntrySize);
+
+          context.Response.Write(key.Value);
+        }
+      }
+      finally
+      {
+        if (resourceStream != null)
+        {
+          resourceStream.Close();
+        }
+      }
+    }
+  }
+
+  private RestdHeader GetHeader(HttpContext context, FileStream resource)
+  {
+    RestdHeader header = null;
+
+    if (resource != null)
+    {
+      resource.Seek(0L, SeekOrigin.Begin);
+
+      char[] restdHeader = new char[512];
+      StreamReader resourceReader = new StreamReader(resource);
+      resourceReader.Read(restdHeader, 0, 512);
+
+      string s = new String(restdHeader);
+      Regex recordLengthRegEx = new Regex(@"""entitySize"":(?<len>[0-9]+)");
+      Match recordMatch = recordLengthRegEx.Match(s);
+      int entitySize;
+      if (Int32.TryParse(recordMatch.Groups["len"].Captures[0].Value, out entitySize))
+      {
+        header = new RestdHeader() { EntrySize = entitySize };
+      }
+    }
+
+    return header;
+  }
+
+  private string[] GetResources(HttpContext context)
+  {
+    string[] resources = Directory.GetFiles(context.Server.MapPath("~/App_Data/"), "*.restd");
+    for (int i = 0; i < resources.Length; i++)
+    {
+      resources[i] = "/" + Path.GetFileNameWithoutExtension(resources[i]);
+      DTrace.WriteLine("  " + resources[i]);
+    }
+    return resources;
+  }
+
+  private bool TryParseResourceAndKey(string query, out string resource, out int? key)
+  {
+    bool ok = true;
+
+    if (String.IsNullOrEmpty(query) || query[0] != '/')
+    {
+      ok = false;
+    }
+
+    Regex resourceRegex = new Regex(@"/(?<resource>\w+)(?<key>\(\d+\)){0,1}\??");
+    Match resourceMatch = resourceRegex.Match(query);
+
+    resource = null;
+    if (ok)
+    {
+      if (query == "/")
+      {
+        resource = "/";
+      }
+      else
+      {
+        if (resourceMatch.Groups["resource"].Success)
+        {
+          resource = "/" + resourceMatch.Groups["resource"].Captures[0].Value;
+        }
+        else
+        {
+          ok = false;
+        }
+      }
+    }
+
+    key = null;
+    if (ok)
+    {
+      int keyValue;
+      if (resourceMatch.Groups["key"].Success && Int32.TryParse(resourceMatch.Groups["key"].Captures[0].Value.Substring(1, resourceMatch.Groups["key"].Captures[0].Value.Length - 2), out keyValue))
+      {
+        key = keyValue;
+      }
+    }
+
+    return ok;
+  }
+
+  public bool IsReusable
+  {
+    get
+    {
+      return false;
+    }
+  }
+}

@@ -1,0 +1,233 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+    <Schema Namespace="RestdModel.Store" Alias="Self" Provider="System.Data.SqlClient" ProviderManifestToken="2005" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns="http://schemas.microsoft.com/ado/2006/04/edm/ssdl">
+        <EntityContainer Name="RestdModelStoreContainer">
+          <EntitySet Name="EO_ANIMAL" EntityType="RestdModel.Store.EO_ANIMAL" store:Type="Tables" Schema="dbo" />
+          <EntitySet Name="EO_NATURAL_COMM" EntityType="RestdModel.Store.EO_NATURAL_COMM" store:Type="Tables" Schema="dbo" />
+          <EntitySet Name="EO_PLANT" EntityType="RestdModel.Store.EO_PLANT" store:Type="Tables" Schema="dbo" />
+        </EntityContainer>
+        <EntityType Name="EO_ANIMAL">
+          <Key>
+            <PropertyRef Name="ELCODE" />
+          </Key>
+          <Property Name="ELCODE" Type="nvarchar" Nullable="false" MaxLength="10" />
+          <Property Name="SCIENTIFIC_NAME" Type="nvarchar" MaxLength="250" />
+          <Property Name="COMMON_NAME" Type="nvarchar" MaxLength="254" />
+          <Property Name="FAMILY" Type="nvarchar" MaxLength="250" />
+          <Property Name="STATE_STATUS" Type="nvarchar" MaxLength="50" />
+          <Property Name="FED_STATUS" Type="nvarchar" MaxLength="50" />
+          <Property Name="S_RANK" Type="nvarchar" MaxLength="20" />
+          <Property Name="G_RANK" Type="nvarchar" MaxLength="12" />
+          <Property Name="NE_RANK" Type="nvarchar" MaxLength="50" />
+          <Property Name="RFR" Type="ntext" />
+          <Property Name="THREATS" Type="ntext" />
+          <Property Name="CONSERVATION_CON" Type="ntext" />
+          <Property Name="HABITAT" Type="ntext" />
+          <Property Name="RANGE" Type="ntext" />
+          <Property Name="STATE_DISTRIBUTION" Type="ntext" />
+          <Property Name="GLOBAL_DISTRIBUTION" Type="ntext" />
+          <Property Name="IDENTIFICATION" Type="ntext" />
+          <Property Name="PHENOLOGY" Type="ntext" />
+          <Property Name="REFERENCES" Type="ntext" />
+        </EntityType>
+        <EntityType Name="EO_NATURAL_COMM">
+          <Key>
+            <PropertyRef Name="MNAP_CODE" />
+            <PropertyRef Name="ELCODE" />
+          </Key>
+          <Property Name="MNAP_CODE" Type="nvarchar" Nullable="false" MaxLength="10" />
+          <Property Name="ELCODE" Type="nvarchar" Nullable="false" MaxLength="10" />
+          <Property Name="ME_SCI_NAME" Type="nvarchar" MaxLength="250" />
+          <Property Name="ME_COMMON_NAME" Type="nvarchar" MaxLength="250" />
+          <Property Name="S_RANK" Type="nvarchar" MaxLength="10" />
+          <Property Name="CONSERVATION_CON" Type="ntext" />
+          <Property Name="WILDLIFE" Type="ntext" />
+          <Property Name="DISTRIBUTION" Type="ntext" />
+          <Property Name="DESCRIPTION" Type="ntext" />
+          <Property Name="SOIL_SITE_DESC" Type="ntext" />
+          <Property Name="DIAGNOSTICS" Type="ntext" />
+          <Property Name="SIMILAR_TYPES" Type="ntext" />
+          <Property Name="LANDSCAPE" Type="nvarchar" MaxLength="255" />
+        </EntityType>
+        <EntityType Name="EO_PLANT">
+          <Key>
+            <PropertyRef Name="ELCODE" />
+          </Key>
+          <Property Name="ELCODE" Type="nvarchar" Nullable="false" MaxLength="10" />
+          <Property Name="SCIENTIFIC_NAME" Type="nvarchar" MaxLength="250" />
+          <Property Name="COMMON_NAME" Type="nvarchar" MaxLength="250" />
+          <Property Name="FAMILY" Type="nvarchar" MaxLength="250" />
+          <Property Name="STATE_STATUS" Type="nvarchar" MaxLength="50" />
+          <Property Name="FED_STATUS" Type="nvarchar" MaxLength="50" />
+          <Property Name="S_RANK" Type="nvarchar" MaxLength="20" />
+          <Property Name="G_RANK" Type="nvarchar" MaxLength="12" />
+          <Property Name="NE_RANK" Type="nvarchar" MaxLength="50" />
+          <Property Name="RFR" Type="ntext" />
+          <Property Name="THREATS" Type="ntext" />
+          <Property Name="CONSERVATION_CON" Type="ntext" />
+          <Property Name="HABITAT" Type="ntext" />
+          <Property Name="RANGE" Type="ntext" />
+          <Property Name="STATE_DISTRIBUTION" Type="ntext" />
+          <Property Name="GLOBAL_DISTRIBUTION" Type="ntext" />
+          <Property Name="IDENTIFICATION" Type="ntext" />
+          <Property Name="PHENOLOGY" Type="ntext" />
+        </EntityType>
+      </Schema></edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="RestdModel" Alias="Self" xmlns="http://schemas.microsoft.com/ado/2006/04/edm">
+        <EntityContainer Name="RestdEntities" >
+          <EntitySet Name="EO_ANIMAL" EntityType="RestdModel.EO_ANIMAL" />
+          <EntitySet Name="EO_NATURAL_COMM" EntityType="RestdModel.EO_NATURAL_COMM" />
+          <EntitySet Name="EO_PLANT" EntityType="RestdModel.EO_PLANT" /></EntityContainer>
+        <EntityType Name="EO_ANIMAL">
+          <Key>
+            <PropertyRef Name="ELCODE" /></Key>
+          <Property Name="ELCODE" Type="String" Nullable="false" />
+          <Property Name="SCIENTIFIC_NAME" Type="String" Nullable="true" />
+          <Property Name="COMMON_NAME" Type="String" Nullable="true" />
+          <Property Name="FAMILY" Type="String" Nullable="true" />
+          <Property Name="STATE_STATUS" Type="String" Nullable="true" />
+          <Property Name="FED_STATUS" Type="String" Nullable="true" />
+          <Property Name="S_RANK" Type="String" Nullable="true" />
+          <Property Name="G_RANK" Type="String" Nullable="true" />
+          <Property Name="NE_RANK" Type="String" Nullable="true" />
+          <Property Name="RFR" Type="String" Nullable="true" />
+          <Property Name="THREATS" Type="String" Nullable="true" />
+          <Property Name="CONSERVATION_CON" Type="String" Nullable="true" />
+          <Property Name="HABITAT" Type="String" Nullable="true" />
+          <Property Name="RANGE" Type="String" Nullable="true" />
+          <Property Name="STATE_DISTRIBUTION" Type="String" Nullable="true" />
+          <Property Name="GLOBAL_DISTRIBUTION" Type="String" Nullable="true" />
+          <Property Name="IDENTIFICATION" Type="String" Nullable="true" />
+          <Property Name="PHENOLOGY" Type="String" Nullable="true" />
+          <Property Name="REFERENCES" Type="String" Nullable="true" /></EntityType>
+        <EntityType Name="EO_NATURAL_COMM">
+          <Key>
+            <PropertyRef Name="MNAP_CODE" />
+            <PropertyRef Name="ELCODE" /></Key>
+          <Property Name="MNAP_CODE" Type="String" Nullable="false" />
+          <Property Name="ELCODE" Type="String" Nullable="false" />
+          <Property Name="ME_SCI_NAME" Type="String" Nullable="true" />
+          <Property Name="ME_COMMON_NAME" Type="String" Nullable="true" />
+          <Property Name="S_RANK" Type="String" Nullable="true" />
+          <Property Name="CONSERVATION_CON" Type="String" Nullable="true" />
+          <Property Name="WILDLIFE" Type="String" Nullable="true" />
+          <Property Name="DISTRIBUTION" Type="String" Nullable="true" />
+          <Property Name="DESCRIPTION" Type="String" Nullable="true" />
+          <Property Name="SOIL_SITE_DESC" Type="String" Nullable="true" />
+          <Property Name="DIAGNOSTICS" Type="String" Nullable="true" />
+          <Property Name="SIMILAR_TYPES" Type="String" Nullable="true" />
+          <Property Name="LANDSCAPE" Type="String" Nullable="true" /></EntityType>
+        <EntityType Name="EO_PLANT">
+          <Key>
+            <PropertyRef Name="ELCODE" /></Key>
+          <Property Name="ELCODE" Type="String" Nullable="false" />
+          <Property Name="SCIENTIFIC_NAME" Type="String" Nullable="true" />
+          <Property Name="COMMON_NAME" Type="String" Nullable="true" />
+          <Property Name="FAMILY" Type="String" Nullable="true" />
+          <Property Name="STATE_STATUS" Type="String" Nullable="true" />
+          <Property Name="FED_STATUS" Type="String" Nullable="true" />
+          <Property Name="S_RANK" Type="String" Nullable="true" />
+          <Property Name="G_RANK" Type="String" Nullable="true" />
+          <Property Name="NE_RANK" Type="String" Nullable="true" />
+          <Property Name="RFR" Type="String" Nullable="true" />
+          <Property Name="THREATS" Type="String" Nullable="true" />
+          <Property Name="CONSERVATION_CON" Type="String" Nullable="true" />
+          <Property Name="HABITAT" Type="String" Nullable="true" />
+          <Property Name="RANGE" Type="String" Nullable="true" />
+          <Property Name="STATE_DISTRIBUTION" Type="String" Nullable="true" />
+          <Property Name="GLOBAL_DISTRIBUTION" Type="String" Nullable="true" />
+          <Property Name="IDENTIFICATION" Type="String" Nullable="true" />
+          <Property Name="PHENOLOGY" Type="String" Nullable="true" /></EntityType></Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="urn:schemas-microsoft-com:windows:storage:mapping:CS">
+        <EntityContainerMapping StorageEntityContainer="RestdModelStoreContainer" CdmEntityContainer="RestdEntities" >
+          <EntitySetMapping Name="EO_ANIMAL">
+            <EntityTypeMapping TypeName="IsTypeOf(RestdModel.EO_ANIMAL)">
+              <MappingFragment StoreEntitySet="EO_ANIMAL">
+                <ScalarProperty Name="REFERENCES" ColumnName="REFERENCES" />
+                <ScalarProperty Name="PHENOLOGY" ColumnName="PHENOLOGY" />
+                <ScalarProperty Name="IDENTIFICATION" ColumnName="IDENTIFICATION" />
+                <ScalarProperty Name="GLOBAL_DISTRIBUTION" ColumnName="GLOBAL_DISTRIBUTION" />
+                <ScalarProperty Name="STATE_DISTRIBUTION" ColumnName="STATE_DISTRIBUTION" />
+                <ScalarProperty Name="RANGE" ColumnName="RANGE" />
+                <ScalarProperty Name="HABITAT" ColumnName="HABITAT" />
+                <ScalarProperty Name="CONSERVATION_CON" ColumnName="CONSERVATION_CON" />
+                <ScalarProperty Name="THREATS" ColumnName="THREATS" />
+                <ScalarProperty Name="RFR" ColumnName="RFR" />
+                <ScalarProperty Name="NE_RANK" ColumnName="NE_RANK" />
+                <ScalarProperty Name="G_RANK" ColumnName="G_RANK" />
+                <ScalarProperty Name="S_RANK" ColumnName="S_RANK" />
+                <ScalarProperty Name="FED_STATUS" ColumnName="FED_STATUS" />
+                <ScalarProperty Name="STATE_STATUS" ColumnName="STATE_STATUS" />
+                <ScalarProperty Name="FAMILY" ColumnName="FAMILY" />
+                <ScalarProperty Name="COMMON_NAME" ColumnName="COMMON_NAME" />
+                <ScalarProperty Name="SCIENTIFIC_NAME" ColumnName="SCIENTIFIC_NAME" />
+                <ScalarProperty Name="ELCODE" ColumnName="ELCODE" /></MappingFragment></EntityTypeMapping></EntitySetMapping>
+          <EntitySetMapping Name="EO_NATURAL_COMM">
+            <EntityTypeMapping TypeName="IsTypeOf(RestdModel.EO_NATURAL_COMM)">
+              <MappingFragment StoreEntitySet="EO_NATURAL_COMM">
+                <ScalarProperty Name="LANDSCAPE" ColumnName="LANDSCAPE" />
+                <ScalarProperty Name="SIMILAR_TYPES" ColumnName="SIMILAR_TYPES" />
+                <ScalarProperty Name="DIAGNOSTICS" ColumnName="DIAGNOSTICS" />
+                <ScalarProperty Name="SOIL_SITE_DESC" ColumnName="SOIL_SITE_DESC" />
+                <ScalarProperty Name="DESCRIPTION" ColumnName="DESCRIPTION" />
+                <ScalarProperty Name="DISTRIBUTION" ColumnName="DISTRIBUTION" />
+                <ScalarProperty Name="WILDLIFE" ColumnName="WILDLIFE" />
+                <ScalarProperty Name="CONSERVATION_CON" ColumnName="CONSERVATION_CON" />
+                <ScalarProperty Name="S_RANK" ColumnName="S_RANK" />
+                <ScalarProperty Name="ME_COMMON_NAME" ColumnName="ME_COMMON_NAME" />
+                <ScalarProperty Name="ME_SCI_NAME" ColumnName="ME_SCI_NAME" />
+                <ScalarProperty Name="ELCODE" ColumnName="ELCODE" />
+                <ScalarProperty Name="MNAP_CODE" ColumnName="MNAP_CODE" /></MappingFragment></EntityTypeMapping></EntitySetMapping>
+          <EntitySetMapping Name="EO_PLANT">
+            <EntityTypeMapping TypeName="IsTypeOf(RestdModel.EO_PLANT)">
+              <MappingFragment StoreEntitySet="EO_PLANT">
+                <ScalarProperty Name="PHENOLOGY" ColumnName="PHENOLOGY" />
+                <ScalarProperty Name="IDENTIFICATION" ColumnName="IDENTIFICATION" />
+                <ScalarProperty Name="GLOBAL_DISTRIBUTION" ColumnName="GLOBAL_DISTRIBUTION" />
+                <ScalarProperty Name="STATE_DISTRIBUTION" ColumnName="STATE_DISTRIBUTION" />
+                <ScalarProperty Name="RANGE" ColumnName="RANGE" />
+                <ScalarProperty Name="HABITAT" ColumnName="HABITAT" />
+                <ScalarProperty Name="CONSERVATION_CON" ColumnName="CONSERVATION_CON" />
+                <ScalarProperty Name="THREATS" ColumnName="THREATS" />
+                <ScalarProperty Name="RFR" ColumnName="RFR" />
+                <ScalarProperty Name="NE_RANK" ColumnName="NE_RANK" />
+                <ScalarProperty Name="G_RANK" ColumnName="G_RANK" />
+                <ScalarProperty Name="S_RANK" ColumnName="S_RANK" />
+                <ScalarProperty Name="FED_STATUS" ColumnName="FED_STATUS" />
+                <ScalarProperty Name="STATE_STATUS" ColumnName="STATE_STATUS" />
+                <ScalarProperty Name="FAMILY" ColumnName="FAMILY" />
+                <ScalarProperty Name="COMMON_NAME" ColumnName="COMMON_NAME" />
+                <ScalarProperty Name="SCIENTIFIC_NAME" ColumnName="SCIENTIFIC_NAME" />
+                <ScalarProperty Name="ELCODE" ColumnName="ELCODE" /></MappingFragment></EntityTypeMapping></EntitySetMapping></EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <edmx:Designer xmlns="http://schemas.microsoft.com/ado/2007/06/edmx">
+    <edmx:Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </edmx:Connection>
+    <edmx:Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+      </DesignerInfoPropertySet>
+    </edmx:Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <edmx:Diagrams>
+      <Diagram Name="RestdModel" >
+        <EntityTypeShape EntityType="RestdModel.EO_ANIMAL" Width="1.5" PointX="0.5" PointY="0.5" Height="4.0575162760416656" />
+        <EntityTypeShape EntityType="RestdModel.EO_NATURAL_COMM" Width="1.5" PointX="2.375" PointY="0.5" Height="3.0714322916666665" />
+        <EntityTypeShape EntityType="RestdModel.EO_PLANT" Width="1.5" PointX="4.25" PointY="0.5" Height="3.8931689453124996" /></Diagram></edmx:Diagrams>
+  </edmx:Designer>
+</edmx:Edmx>
